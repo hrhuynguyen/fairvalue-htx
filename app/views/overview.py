@@ -17,9 +17,17 @@ page_header("UH CodeCoogs AI Hackathon 2026 · Track 2", ":blue[X]Market",
 stat_tiles([
     (f"{metrics['n_listings']:,}", "Houston homes analyzed", "Zillow listings, June 2024"),
     (f"{best['MdAPE_%']:.1f}%", "Typical prediction error", "on homes the model never saw", True),
-    (f"{ZILLOW_OFF_MARKET_MDAPE:.2f}%", "Zillow's own error", "when it can't see the asking price"),
+    (f"{ZILLOW_OFF_MARKET_MDAPE:.2f}%", "Zillow's own error, for reference",
+     "national sale prices, no asking price: not a like-for-like test"),
     (f"{afford_75k:.0%}", "of listings fit a $75k salary", "all-in cost ≤ 28% of income"),
 ])
+
+with st.container(border=True):
+    t0, t1, t2, t3 = st.columns([1.05, 1, 1.1, 1.3], vertical_alignment="center")
+    t0.markdown("**Only have 2 minutes?** Start here:")
+    t1.page_link("views/price_home.py", label="1 · Price any home →")
+    t2.page_link("views/where_to_live.py", label="2 · Where should I live? →")
+    t3.page_link("views/deals.py", label="3 · Under- & overpriced homes →")
 
 c1, c2 = st.columns([1.55, 1], gap="large")
 with c1:
@@ -68,4 +76,6 @@ steps = [("1", "Data", "25,948 listings + IRS income + Zillow ZIP trends"), ("2"
 html_block('<div class="fv-steps">' + "".join(
     f'<div class="fv-step"><div class="fv-step-n">{n}</div><div class="fv-step-t">{t}</div><div class="fv-step-d">{d}</div></div>'
     for n, t, d in steps) + "</div>")
-st.page_link("views/data.py", label="Start the story: the data →")
+b1, b2, _ = st.columns([0.9, 1, 2])
+b1.page_link("views/data.py", label="Start the story: the data →")
+b2.page_link("views/price_home.py", label="Or jump to the apps →")

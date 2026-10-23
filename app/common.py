@@ -215,6 +215,7 @@ h1 {letter-spacing: -0.02em;}
 h3 {margin-top: 1.2rem;}
 [data-testid="stSidebarNav"] span, [data-testid="stSidebarNavLink"] span {font-size: 1rem;}
 [data-testid="stMetricLabel"] p {font-size: 1rem !important; color: #52514e;}
+[data-testid="stPageLink-NavLink"] p {color: #2a78d6; font-weight: 600;}
 [data-testid="stCaptionContainer"] p {font-size: 0.95rem;}
 table {font-size: 0.95rem;}
 .fv-kicker {font-size: .8rem; letter-spacing: .14em; text-transform: uppercase; color: #8a877f; font-weight: 600; margin-bottom: -.6rem;}
