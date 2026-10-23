@@ -46,7 +46,7 @@ for col, (title, idx, fmt, hover) in zip((c1, c2), [("Median error in dollars", 
         fig = go.Figure(go.Bar(x=list(rows), y=vals, marker_color=[MUTED, BLUE] if idx == 0 else [BLUE, BLUE],
                                text=[format(v, fmt.lstrip("$")) if idx else money(v) for v in vals], textposition="outside",
                                cliponaxis=False, hovertemplate="%{x}<br>" + hover + "<extra></extra>"))
-        style(fig, 300, title=dict(text=title, font=dict(size=15)), margin=dict(l=10, r=10, t=50, b=10))
+        style(fig, 300, title=dict(text=title, font=dict(size=14)), margin=dict(l=10, r=10, t=50, b=10))
         fig.update_yaxes(tickformat=fmt, rangemode="tozero")
         fig.update_xaxes(tickangle=0)
         st.plotly_chart(fig, width="stretch")

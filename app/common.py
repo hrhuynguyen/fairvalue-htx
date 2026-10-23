@@ -92,8 +92,8 @@ def md_money(x):
 def style(fig, height=320, **layout):
     """House style: transparent surface, recessive grid, muted ink, no chart junk."""
     base = dict(height=height, margin=dict(l=10, r=40, t=30, b=10), plot_bgcolor="rgba(0,0,0,0)",
-                paper_bgcolor="rgba(0,0,0,0)", font=dict(family="Inter, sans-serif", color=INK_2, size=13),
-                showlegend=False, hoverlabel=dict(bgcolor="white", font_color=INK, font_size=14))
+                paper_bgcolor="rgba(0,0,0,0)", font=dict(family="Inter, sans-serif", color=INK_2, size=12),
+                showlegend=False, hoverlabel=dict(bgcolor="white", font_color=INK, font_size=13))
     fig.update_layout(**{**base, **layout})
     fig.update_xaxes(gridcolor=GRID, zeroline=False, linecolor=MUTED)
     fig.update_yaxes(gridcolor=GRID, zeroline=False, linecolor=MUTED)
@@ -218,7 +218,7 @@ h3 {margin-top: 1.2rem;}
 [data-testid="stCaptionContainer"] p {font-size: 0.95rem;}
 table {font-size: 0.95rem;}
 .fv-kicker {font-size: .8rem; letter-spacing: .14em; text-transform: uppercase; color: #8a877f; font-weight: 600; margin-bottom: -.6rem;}
-.fv-lead {font-size: 1.15rem; line-height: 1.55; color: #52514e; max-width: 54rem; margin: .1rem 0 1.4rem;}
+.fv-lead {font-size: 1.1rem; line-height: 1.55; color: #52514e; max-width: 54rem; margin: .1rem 0 1.4rem;}
 .fv-insight {border-left: 4px solid #2a78d6; background: #ffffff; padding: 1rem 1.3rem; border-radius: 0 .75rem .75rem 0;
              margin: .4rem 0 1.8rem; color: #2d2c2a; line-height: 1.6; box-shadow: 0 1px 2px rgba(0,0,0,.05);}
 .fv-tag {display: block; font-size: .72rem; letter-spacing: .14em; text-transform: uppercase; font-weight: 700; margin-bottom: .35rem;}
@@ -229,12 +229,12 @@ table {font-size: 0.95rem;}
 .fv-takeaway b {color: #ffffff;}
 .fv-stats {display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: .8rem 0 1.6rem;}
 .fv-stat {background: #ffffff; border: 1px solid #e6e3dc; border-radius: 1rem; padding: 1.1rem 1.3rem;}
-.fv-stat-value {font-family: Fraunces, Georgia, serif; font-size: 2rem; line-height: 1.1; color: #1a1a19; font-weight: 600;}
+.fv-stat-value {font-family: Fraunces, Georgia, serif; font-size: 1.85rem; line-height: 1.1; color: #1a1a19; font-weight: 600;}
 .fv-stat-value.accent {color: #2a78d6;}
 .fv-stat-label {font-size: .98rem; color: #52514e; margin-top: .4rem; font-weight: 500;}
 .fv-stat-note {font-size: .82rem; color: #8a877f; margin-top: .2rem;}
 .fv-steps {display: flex; gap: 1rem; flex-wrap: wrap; margin: .5rem 0 1rem;}
-.fv-step {flex: 1 1 130px; border-top: 3px solid #2a78d6; padding: .7rem .1rem;}
+.fv-step {flex: 1 1 105px; border-top: 3px solid #2a78d6; padding: .7rem .1rem;}
 .fv-step-n {font-family: Fraunces, Georgia, serif; font-size: 1.5rem; color: #2a78d6; line-height: 1;}
 .fv-step-t {font-weight: 600; margin-top: .35rem;}
 .fv-step-d {font-size: .88rem; color: #6b6964; line-height: 1.4;}

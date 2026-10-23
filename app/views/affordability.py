@@ -42,7 +42,7 @@ with c1:
                                hovertemplate="Income %{x:$,.0f}: %{y:.0%} of listings<extra></extra>"))
     fig.add_trace(go.Scatter(x=[income], y=[you], mode="markers+text", marker=dict(color=INK_2, size=10),
                              text=[f"  you: {you:.0%}"], textposition="middle right", hoverinfo="skip"))
-    style(fig, 320, title=dict(text="Share of listings you can afford, by income", font=dict(size=15)))
+    style(fig, 320, title=dict(text="Share of listings you can afford, by income", font=dict(size=14)))
     fig.update_xaxes(tickformat="$,.0s", title="Household income")
     fig.update_yaxes(tickformat=".0%", range=[0, 1])
     st.plotly_chart(fig, width="stretch")
@@ -52,7 +52,7 @@ with c2:
                            text=[money(v) for v in parts.values()], textposition="outside", cliponaxis=False,
                            hovertemplate="%{y}: %{x:$,.0f}/mo<extra></extra>"))
     style(fig, 320, yaxis=dict(autorange="reversed"), margin=dict(l=10, r=60, t=40, b=10),
-          title=dict(text=f"Where your {money(sum(parts.values()))}/month goes", font=dict(size=15)))
+          title=dict(text=f"Where your {money(sum(parts.values()))}/month goes", font=dict(size=14)))
     fig.update_xaxes(tickformat="$,.0f")
     st.plotly_chart(fig, width="stretch")
 

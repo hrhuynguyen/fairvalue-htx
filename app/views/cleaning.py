@@ -66,7 +66,7 @@ with c1:
                            hovertemplate="built %{x}: %{y:,} rows<extra></extra>"))
     fig.add_annotation(x=2001.5, y=int(yr.get(2001.5, 0)), text="3,057 rows set to '2001.5'<br>(a filled-in value, not a real year)",
                        showarrow=True, arrowhead=0, ax=-120, ay=-10, font=dict(color=INK_2, size=13))
-    style(fig, 300, title=dict(text="Before: year built in the 'clean' CSV", font=dict(size=15)))
+    style(fig, 300, title=dict(text="Before: year built in the 'clean' CSV", font=dict(size=14)))
     fig.update_yaxes(title="Listings")
     st.plotly_chart(fig, width="stretch")
 with c2:
@@ -82,7 +82,7 @@ with c2:
     fig.add_annotation(x=np.log10(0.25), y=max(before) * 0.55, text="acres hiding<br>in a sqft column", showarrow=False,
                        font=dict(color=PROBLEM, size=13))
     style(fig, 300, showlegend=True, legend=dict(orientation="h", y=-0.35, x=0),
-          title=dict(text="Lot size: before vs. after fixing units", font=dict(size=15)), margin=dict(l=10, r=20, t=40, b=10))
+          title=dict(text="Lot size: before vs. after fixing units", font=dict(size=14)), margin=dict(l=10, r=20, t=40, b=10))
     fig.update_xaxes(type="log", title="Lot size value (log scale)", tickvals=[0.1, 10, 1e3, 1e5],
                      ticktext=["0.1", "10", "1k", "100k"], tickangle=0)
     fig.update_yaxes(title="Homes")

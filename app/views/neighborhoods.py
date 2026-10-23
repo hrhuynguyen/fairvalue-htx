@@ -56,7 +56,7 @@ if pick:
             fig.add_trace(go.Scatter(x=hist.index, y=hist[z], mode="lines", name=label[z], line=dict(color=color, width=2.5),
                                      hovertemplate=label[z] + ": %{y:$,.0f}<extra></extra>"))
     style(fig, 340, showlegend=True, legend=dict(orientation="h", y=1.12, x=0), hovermode="x unified",
-          title=dict(text="Typical home value since 2012 (Zillow)", font=dict(size=15), y=0.98), margin=dict(l=10, r=20, t=70, b=10))
+          title=dict(text="Typical home value since 2012 (Zillow)", font=dict(size=14), y=0.98), margin=dict(l=10, r=20, t=70, b=10))
     fig.update_yaxes(tickformat="$,.0f")
     st.plotly_chart(fig, width="stretch")
 

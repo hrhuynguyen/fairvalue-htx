@@ -145,7 +145,7 @@ with c2:
                              hoverinfo="skip", textfont=dict(color="#1a1a19", size=14)))
     style(fig, 500, barmode="stack", showlegend=True,
           legend=dict(orientation="h", y=-0.2, x=0, traceorder="normal", font=dict(size=13)),
-          title=dict(text="Top 10: what makes up each score", font=dict(size=15)), margin=dict(l=10, r=30, t=40, b=10))
+          title=dict(text="Top 10: what makes up each score", font=dict(size=14)), margin=dict(l=10, r=30, t=40, b=10))
     fig.update_xaxes(range=[0, 108], title="Score (0-100)")
     st.plotly_chart(fig, width="stretch")
 
