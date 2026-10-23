@@ -1,7 +1,7 @@
-# FairValue HTX: 5-minute pitch and demo script
+# XMarket: 5-minute pitch and demo script
 
 **Setup before judging:** run `.venv/bin/streamlit run app/app.py`, open http://localhost:8501 in full-screen Chrome at 100% zoom,
-and close other tabs. The three example searches on **Ask FairValue** are cached, so they work without Wi-Fi.
+and close other tabs. The three example searches on **Ask XMarket** are cached, so they work without Wi-Fi.
 Record one full rehearsal with Cmd+Shift+5 and keep the video on the desktop as a backup if the laptop or projector misbehaves.
 Without Wi-Fi the app still runs; only the map background tiles go blank, and the dots still show.
 
@@ -9,10 +9,10 @@ Times are cumulative. Say the **bold lines**; the rest are cues for what to clic
 
 ---
 
-### 0:00 – 0:30 · Start here (hook)
+### 0:00 – 0:30 · Introduction (hook)
 **"Buying a home is the biggest purchase most Houstonians make, but a first-time buyer has no way to tell whether an asking price is fair.
 Zillow's estimate for a listed home mostly echoes the asking price, and the sticker price hides Texas-sized taxes and insurance.
-Meet Maya: a UH grad earning $75,000 who wants to spend under $1,750 a month. FairValue HTX answers her three questions:
+Our case study: Maya, a UH grad earning $75,000 who wants to spend under $1,750 a month. XMarket answers her three questions:
 what's a fair price, what can I afford, and which listings are bargains?"**
 
 Point at the four headline numbers.
@@ -35,7 +35,7 @@ Point at the coverage map.
 - **"Our best engineered feature is 'comps': the price per sqft of the 10 nearest *other* homes, which is exactly what appraisers use.
   We never use a home's own price per sqft, because that's the answer."**
 
-### 2:10 – 3:00 · 5 · Model + 6 · Can we trust it?
+### 2:10 – 3:00 · 5 · Metric + 6 · Model + 7 · Validation
 - **"A linear-regression baseline misses by 18.7%. Gradient-boosted trees get that to 7.4%, and a weighted ensemble of three boosting models (CatBoost, XGBoost, LightGBM) gets 7.1%. We learned the weights on one part of the data and tested them on another, and the ensemble won on all 5 folds."**
 - **"Every number is from 5-fold cross-validation: each home is scored by a model that never saw its price. If we'd cheated and fed in Zillow's estimate,
   we'd get 1.2% error and R² 0.995, which looks amazing and means nothing."**
@@ -44,7 +44,10 @@ Point at the coverage map.
 - **"And our price ranges are honest: in every price band, 10% of homes fall below and 10% above, as designed."**
 
 ### 3:00 – 4:30 · Live demo
-1. **Ask FairValue (AI)** → click the first example. **"Maya types in plain English. Claude turns it into filters; our model supplies every price.
+0. **Where should I live?** (sidebar, under *Put the model to work*). Inputs are already Maya's: $75k, works at the Medical Center, buying.
+   **"Tell XMarket your income and where you work, and it ranks every ZIP code on affordability, commute and neighborhood strength.
+   For Maya: #1 is 77033, 4.6 miles from work, where 30 of 94 homes fit her budget."** Move the *Short commute* slider to 5 to show the ranking adapt.
+1. **Ask XMarket (AI)** → click the first example. **"Maya types in plain English. Claude turns it into filters; our model supplies every price.
    The AI never makes up a number."** Point at "Claude understood…" and the map.
 2. Pick 5742 Cartagena St (first result) → **Explain this home**. **"Listed at $150k; our fair value is $249k. Claude explains why in plain English,
    and flags that a gap this big means: get an inspection."**
@@ -54,7 +57,7 @@ Point at the coverage map.
 5. If time allows: **Beat the model**: invite a judge to guess one price.
 
 ### 4:30 – 5:00 · Close
-**"FairValue HTX turns 19,000 listings into three answers for every Houston buyer: is it fair, can I afford it, and is it a deal.
+**"XMarket turns 19,000 listings into three answers for every Houston buyer: is it fair, can I afford it, and is it a deal.
 It's honest about uncertainty and it explains itself. Next steps: train on actual sale prices from the county appraisal district,
 and add flood-claim history. In Houston, that's the biggest hidden cost."**
 
@@ -100,6 +103,11 @@ from 14.5% to 13.4%, so we kept it.
 
 **What does Claude actually do? Can it hallucinate prices?** Two things only: it turns plain English into structured filters (schema-constrained
 JSON), and it rewrites our model's numbers as a paragraph. All prices come from our model. Answers are cached, and the app works without the AI.
+
+**How does "Where should I live?" rank neighborhoods?** Every ZIP code that fits the budget and commute gets a 0–100 percentile on
+affordability (share and number of homes that fit, or rent as a share of income), commute (straight-line miles), neighborhood strength
+(5-year value growth and change since 2024) and bargains (share of homes our model flags as underpriced). Then it takes a weighted average using
+the user's sliders. It's transparent and adjustable, not a black box. We don't have school, crime or flood data, and the page says so.
 
 **Is the 2024 data stale?** It's a snapshot. The home report shows how each ZIP's values have moved since (Zillow index to Sept 2026). The pipeline
 reruns in about 3 minutes, so it can be retrained on fresh listings.

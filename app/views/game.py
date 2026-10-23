@@ -9,7 +9,7 @@ scored = load_scored()
 pool = scored[(scored.flag != "Verify first") & scored.imgSrc.notna() & scored.livingArea.notna()
               & scored.homeType.isin(["SINGLE_FAMILY", "TOWNHOUSE", "CONDO"]) & scored.price.between(100_000, 1_500_000)]
 
-page_header("CREATIVE · HOW GOOD IS THE MODEL, REALLY?", "Beat the model",
+page_header("CREATIVE 2 · HOW GOOD IS THE MODEL, REALLY?", "Beat the model",
             f"You see what the model sees: photo, size, age and location. Guess the asking price. "
             f"After {ROUNDS} homes we compare your typical error with the model's. Every home here was hidden from the model during training.")
 

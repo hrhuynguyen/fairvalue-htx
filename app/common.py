@@ -9,12 +9,13 @@ import joblib
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+import pydeck as pdk
 import streamlit as st
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from build_dataset import HUBS, haversine_mi  # noqa: E402
-from features import FEATURES, LISTING_FLAGS, CompsIndex  # noqa: E402
+from features import FEATURES, LISTING_FLAGS, CompsIndex, prepare  # noqa: E402
 
 # Palette (validated reference palette). Blue/red are reserved for under/over fair value.
 BLUE, RED, GRAY = "#2a78d6", "#e34948", "#a3a29c"
@@ -183,7 +184,7 @@ def plot_waterfall(start, steps, fair_value):
         hovertemplate="%{y}: %{text}<extra></extra>",
     ))
     fig = style(fig, 34 * len(labels) + 50, yaxis=dict(autorange="reversed"))
-    fig.update_xaxes(tickformat="$,.0f")
+    fig.update_xaxes(tickformat="$,.0s", nticks=5)
     fig.update_layout(margin=dict(l=10, r=90, t=10, b=10))
     return fig
 
@@ -237,6 +238,10 @@ table {font-size: 0.95rem;}
 .fv-step-n {font-family: Fraunces, Georgia, serif; font-size: 1.9rem; color: #2a78d6; line-height: 1;}
 .fv-step-t {font-weight: 600; margin-top: .35rem;}
 .fv-step-d {font-size: .88rem; color: #6b6964; line-height: 1.4;}
+.fv-example {background: #eef4fc; border: 1px solid #cfe0f7; border-radius: .75rem; padding: .85rem 1.2rem;
+              margin: .4rem 0 1.4rem; color: #1f3b63; line-height: 1.55;}
+.fv-example .fv-tag {color: #2a78d6;}
+.fv-guide .fv-step-d {font-size: .95rem; color: #2d2c2a;}
 .fv-card {background: #ffffff; border: 1px solid #e6e3dc; border-radius: 1rem; padding: 1.1rem 1.3rem; height: 100%;}
 .fv-card-t {font-weight: 600; margin-bottom: .3rem;}
 .fv-card-d {font-size: .92rem; color: #52514e; line-height: 1.5;}
@@ -266,8 +271,8 @@ def page_header(kicker, title, lead=None):
         html_block(f'<p class="fv-lead">{_inline(lead)}</p>')
 
 
-def step_header(step, total, title, one_liner):
-    page_header(f"Step {step} of {total} · The 5-minute story", title, one_liner)
+def step_header(step, total, title, one_liner=None):
+    page_header(f"Step {step} of {total} · Data Science Task", title, one_liner)
 
 
 def takeaway(text):
@@ -295,13 +300,55 @@ def table(df):
              .rename(index=lambda i: i.replace("$", "\\$") if isinstance(i, str) else i))
 
 
+REDS = ["#fde8e6", "#f8c3bd", "#f09189", "#e35d55", "#c23a33", "#8e2420"]  # one-hue ramp: light = low, dark = high
+
+
+@st.cache_data
+def zip_shapes():
+    """Houston ZIP (Census ZCTA) boundaries, trimmed to our 159 ZIP codes."""
+    return json.load(open(ROOT / "data/external/houston_zip_geo.json"))
+
+
+def zip_choropleth(stats: pd.DataFrame, value: str, fmt, label: str, min_n=10, height=460):
+    """ZIP map shaded light -> dark red by `value` (6 quantile bins) plus a legend.
+
+    stats: indexed by ZIP with columns [value, "n", "city"]. ZIPs with fewer than `min_n` listings are gray,
+    because a median from a handful of homes is noise. Returns the bin edges.
+    """
+    solid = stats[stats.n >= min_n]
+    edges = solid[value].quantile(np.linspace(0, 1, 7)).to_numpy()
+    bins = pd.cut(stats[value].clip(edges[0], edges[-1]), edges, labels=False, include_lowest=True)
+    geo = zip_shapes()
+    for f in geo["features"]:
+        z = f["properties"]["zipcode"]
+        r = stats.loc[z]
+        few = r["n"] < min_n
+        f["properties"].update(fill=[200, 198, 192, 120] if few else hex_rgb(REDS[int(bins[z])], 215), city=r["city"],
+                               val=fmt(r[value]) + (" (too few listings)" if few else ""), n=int(r["n"]))
+    st.pydeck_chart(pdk.Deck(
+        map_provider="carto", map_style="light",
+        initial_view_state=pdk.ViewState(latitude=29.80, longitude=-95.45, zoom=8.3),
+        layers=[pdk.Layer("GeoJsonLayer", geo, get_fill_color="properties.fill", get_line_color=[255, 255, 255],
+                          line_width_min_pixels=1, stroked=True, filled=True, pickable=True, auto_highlight=True,
+                          highlight_color=[11, 11, 11, 70])],
+        tooltip={"html": f"<b>{{zipcode}} · {{city}}</b><br/>{label} {{val}}<br/>{{n}} listings"},
+    ), height=height)
+    swatch = '<span style="width:22px;height:14px;background:{};border-radius:3px;margin-right:6px;display:inline-block"></span>'
+    items = [f'<span style="display:inline-flex;align-items:center;margin-right:14px">{swatch.format(c)}'
+             f'{fmt(lo).replace("$", "&#36;")}–{fmt(hi).replace("$", "&#36;")}</span>'
+             for c, lo, hi in zip(REDS, edges[:-1], edges[1:])]
+    items.append(f'<span style="display:inline-flex;align-items:center">{swatch.format("#c8c6c0")}fewer than {min_n} listings</span>')
+    html_block(f'<div style="font-size:.9rem;color:#52514e;margin:-.4rem 0 .8rem">{"".join(items)}</div>')
+    return edges
+
+
 def blend_mind_map(final: dict, members: list) -> str:
     """Radial SVG: the final blend in the center, one branch per model.
 
     final: {"mdape", "r2", "within10"}; members: dicts with name, mdape, r2, weight, trait, pos (x, y).
     Branch thickness is proportional to the model's weight; a weight of 0 draws a dashed, muted branch.
     """
-    cx, cy, w, h = 500, 290, 270, 128
+    cx, cy, w, h = 500, 290, 300, 128
     parts = []
     for m in members:  # connectors first so cards sit on top
         x, y = m["pos"]
@@ -321,7 +368,7 @@ def blend_mind_map(final: dict, members: list) -> str:
         x, y = m["pos"]
         dropped = m["weight"] < 0.005
         chip_fill, chip_text = (GRID, INK_2) if dropped else ("#e5effb", BLUE)
-        chip = "dropped · weight 0%" if dropped else f"{m['weight']:.0%} of the blend"
+        chip = "dropped (0%)" if dropped else f"{m['weight']:.0%} of the blend"
         parts.append(
             f'<g><title>{m["name"]}: median error {m["mdape"]:.2f}%, R² {m["r2"]:.3f}, weight {m["weight"]:.1%}</title>'
             f'<rect x="{x - w / 2}" y="{y - h / 2}" width="{w}" height="{h}" rx="16" fill="#ffffff" '
@@ -331,8 +378,8 @@ def blend_mind_map(final: dict, members: list) -> str:
             f'rx="12" fill="{chip_fill}"/>'
             f'<text x="{x + w / 2 - 20 - (len(chip) * 6.6 + 18) / 2}" y="{y - h / 2 + 31.5}" class="mm-chip" fill="{chip_text}">{chip}</text>'
             f'<text x="{x - w / 2 + 20}" y="{y + 16}" class="mm-score" fill="{INK_2 if dropped else INK}">{m["mdape"]:.2f}%</text>'
-            f'<text x="{x - w / 2 + 112}" y="{y + 9}" class="mm-sub" fill="{INK_2}">median error alone</text>'
-            f'<text x="{x - w / 2 + 112}" y="{y + 27}" class="mm-sub" fill="{INK_2}">R² {m["r2"]:.3f}</text>'
+            f'<text x="{x - w / 2 + 132}" y="{y + 9}" class="mm-sub" fill="{INK_2}">median error alone</text>'
+            f'<text x="{x - w / 2 + 132}" y="{y + 27}" class="mm-sub" fill="{INK_2}">R² {m["r2"]:.3f}</text>'
             f'<text x="{x - w / 2 + 20}" y="{y + h / 2 - 16}" class="mm-trait" fill="#8a877f">{m["trait"]}</text></g>')
     style_block = ("<style>.mm text{font-family:Inter,sans-serif}"
                    ".mm .mm-big,.mm .mm-score{font-family:Fraunces,Georgia,serif;font-weight:600}"
@@ -343,6 +390,61 @@ def blend_mind_map(final: dict, members: list) -> str:
                    ".mm .mm-chip{font-size:11.5px;font-weight:600;text-anchor:middle}.mm .mm-trait{font-size:12.5px}</style>")
     return (f'<svg class="mm" viewBox="0 0 1000 580" width="100%" role="img" '
             f'aria-label="Mind map of the model blend">{style_block}{"".join(parts)}</svg>')
+
+
+def app_guide(steps, example):
+    """Three numbered how-to steps and a worked example, shown at the top of every Application page."""
+    html_block('<div class="fv-steps fv-guide">' + "".join(
+        f'<div class="fv-step"><div class="fv-step-n">{i}</div><div class="fv-step-d">{_inline(t)}</div></div>'
+        for i, t in enumerate(steps, 1)) + "</div>")
+    html_block(f'<div class="fv-example"><span class="fv-tag">Example</span>{_inline(example)}</div>')
+
+
+@st.cache_data
+def zip_centers():
+    """ZIP codes with at least 10 listings: center point (median coordinates) and main city."""
+    z = load_listings().groupby("zipcode").agg(lat=("latitude", "median"), lon=("longitude", "median"),
+                                               city=("city", lambda c: c.mode().iat[0]), n=("zpid", "size"))
+    return z[z.n >= 10]
+
+
+def price_homes(specs):
+    """Fair value and 80% range for described homes (listed or not).
+
+    specs: dicts with zipcode, homeType, sqft, beds, baths, year and optional lot, new.
+    Returns (model-ready X, fair value, low, high) as arrays in the order of `specs`.
+    """
+    model, zc = load_model(), zip_centers()
+    template = load_listings().drop_duplicates("zipcode").set_index("zipcode")  # carries the ZIP-level features
+    rows = pd.DataFrame([{**template.loc[sp["zipcode"]].to_dict(), "zipcode": sp["zipcode"],
+                          "latitude": zc.at[sp["zipcode"], "lat"], "longitude": zc.at[sp["zipcode"], "lon"],
+                          "homeType": sp["homeType"], "livingArea": sp["sqft"], "bedrooms": sp["beds"],
+                          "bathrooms": sp["baths"], "yearBuilt": sp["year"], "lot_sqft": sp.get("lot") or np.nan,
+                          "is_new_construction": sp.get("new", False), "has_builder": sp.get("new", False),
+                          "is_premier_builder": False, "is_bank_owned": False, "is_auction": False} for sp in specs])
+    for name, (lat, lon) in HUBS.items():
+        rows[f"dist_{name}_mi"] = haversine_mi(rows.latitude, rows.longitude, lat, lon)
+    rows["bed_bath_ratio"] = rows.bedrooms / rows.bathrooms.replace(0, np.nan)
+    rows["sqft_per_bed"] = rows.livingArea / rows.bedrooms.replace(0, np.nan)
+    rows = rows.drop(columns=["knn_log_ppsf", "knn_log_price", "knn_dist_mi"], errors="ignore")
+    rows = rows.join(model["comps"].query(rows, exclude_self=False))
+    X = prepare(rows, model["categories"])[FEATURES]
+    mid_log = model["point"].predict(X)
+    band = np.searchsorted(model["band_edges"], mid_log)  # interval calibration is per price band
+    mid = np.exp(mid_log)
+    lo = np.minimum(np.exp(model["lo"].predict(X) - model["band_adj"][band, 0]), mid)
+    hi = np.maximum(np.exp(model["hi"].predict(X) + model["band_adj"][band, 1]), mid)
+    return X, mid, lo, hi
+
+
+@st.cache_data
+def zip_value_history():
+    """Zillow typical home value per ZIP, monthly (Houston-area extract)."""
+    z = pd.read_parquet(ROOT / "data/processed/zhvi_houston.parquet").set_index("RegionName")
+    months = [c for c in z.columns if c[:2] == "20"]
+    out = z[months].T
+    out.index = pd.to_datetime(out.index)
+    return out
 
 
 def cards(items):

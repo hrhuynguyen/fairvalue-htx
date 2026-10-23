@@ -17,7 +17,7 @@ EXAMPLES = [
     "Cheapest newer townhouse near downtown, built after 2015",
 ]
 
-page_header("CREATIVE · AI-POWERED SEARCH AND EXPLANATIONS", "Ask FairValue",
+page_header("CREATIVE 1 · AI-POWERED SEARCH AND EXPLANATIONS", "Ask XMarket",
             "Describe the home you want in plain English. **Claude** (Anthropic's AI) turns your words into search filters, "
             "and our model supplies every price. The AI never makes up numbers.")
 
@@ -153,4 +153,4 @@ if query:
 
 st.divider()
 st.caption(f"Powered by Claude ({ai.MODEL}) via the Anthropic API. The AI only translates requests into filters and explains our "
-           "model's output; all prices come from the FairValue model. Answers are cached so repeat questions are instant.")
+           "model's output; all prices come from the XMarket model. Answers are cached so repeat questions are instant.")

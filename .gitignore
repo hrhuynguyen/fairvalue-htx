@@ -2,8 +2,10 @@
 .venv/
 __pycache__/
 .DS_Store
+# large raw downloads: re-download with the commands in README; the app only needs the small files kept below
 data/raw/*
 !data/raw/properties_clean_v2.csv
-data/external/
+data/external/*
+!data/external/houston_zip_geo.json
 src/catboost_info/
 reports/streamlit.log

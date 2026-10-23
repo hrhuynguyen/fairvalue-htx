@@ -2,60 +2,65 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from common import (BLUE, FEATURES, cost_inputs, default_pool, driver_waterfall, hbar, load_scored, md_money, money,
-                    monthly_cost, page_header, plot_range, plot_waterfall)
+from common import (BLUE, FEATURES, INK_2, MUTED, app_guide, cost_inputs, default_pool, driver_waterfall, hbar, load_scored,
+                    md_money, money, monthly_cost, page_header, plot_range, plot_waterfall, stat_tiles, style,
+                    zip_value_history)
 
 scored = load_scored()
+page_header("APPLICATION 5 · ONE HOME, END TO END", "Home report",
+            "For a buyer about to make an offer: is the price fair, what will it cost each month, and where is the market heading?")
+app_guide(["**Choose a listing** (from your latest search, or a starter-home bargain by default).",
+           "Check the **verdict** and **what drives** its fair value.", "Switch tabs for the **monthly cost** and the **ZIP's price trend**."],
+          "The default is a starter home listed well below its fair value. Its report shows why the model values it higher, "
+          "what Maya would pay each month, and how home values in that ZIP code have moved.")
 
-page_header("APPLICATIONS 1 + 2 + 3 FOR ONE HOME", "Home report")
 pool = st.session_state.get("deal_view") or default_pool(scored)
-st.caption("Listings come from your latest search on *Under- & overpriced homes* (or, before any search, starter-home bargains under \\$400k).")
 sel = st.session_state.get("selected_home")
-pick = st.selectbox("Choose a listing", pool, index=pool.index(sel) if sel in pool else 0,
+pick = st.selectbox("Listing", pool, index=pool.index(sel) if sel in pool else 0,
                     format_func=lambda i: f"{scored.at[i, 'address']} · {money(scored.at[i, 'price'])} ({scored.at[i, 'gap_pct'] * 100:+.0f}% vs fair)")
 st.session_state["selected_home"] = pick
 h = scored.loc[pick]
+verdict = {"Underpriced": "Below fair range", "Overpriced": "Above fair range", "Fair": "Within fair range",
+           "Verify first": "Unusual gap: verify"}[h.flag]
+stat_tiles([(money(h.price), "asking price", None), (money(h.fair_value), "our fair value", f"{h.gap_pct:+.0%} asking vs fair", True),
+            (verdict, "verdict", f"80% range {money(h.fair_lo)} – {money(h.fair_hi)}")])
 
-left, right = st.columns([1, 1.6])
-with left:
-    if isinstance(h.imgSrc, str):
-        st.image(h.imgSrc, width="stretch")
-    st.markdown(f"**{h.address}**  \n{h.bedrooms:.0f} bd · {h.bathrooms:g} ba · {h.livingArea:,.0f} sqft · "
-                f"built {h.yearBuilt:.0f} · {h.homeType.replace('_', ' ').title()}  \n[View on Zillow ↗]({h.detailUrl})")
-    verdict = {"Underpriced": "🔵 Listed **below** its fair-value range",
-               "Overpriced": "🔴 Listed **above** its fair-value range",
-               "Fair": "⚪ Listed **within** its fair-value range",
-               "Verify first": "⚠️ Gap is **unusually large**. Likely a distressed sale, major repairs, "
-                               "or a listing data error. Verify before trusting it."}[h.flag]
-    st.markdown(f"### {verdict}")
-    k = st.columns(2)
-    k[0].metric("List price", money(h.price))
-    k[1].metric("Fair value", money(h.fair_value), delta=f"{h.gap_pct * 100:+.1f}% list vs fair", delta_color="off")
-    st.caption(f"80% fair range: {md_money(h.fair_lo)} – {md_money(h.fair_hi)}. "
-               f"Zillow's Zestimate: {md_money(h.zestimate) if pd.notna(h.zestimate) else 'n/a'}.")
-with right:
-    st.plotly_chart(plot_range(h.price, h.fair_lo, h.fair_value, h.fair_hi), width="stretch")
-    st.markdown("**Why the model values it at this price**")
-    start, steps = driver_waterfall(h.shap_base, {f: h[f"shap__{f}"] for f in FEATURES}, h.fair_value)
-    st.plotly_chart(plot_waterfall(start, steps, h.fair_value), width="stretch")
-
-st.markdown("#### The real monthly cost (the sticker price is not the payment)")
-parts = monthly_cost(h.price, **cost_inputs("report"))
-total = sum(parts.values())
-c1, c2 = st.columns([1.4, 1])
-with c1:
-    st.plotly_chart(hbar(list(parts), list(parts.values()), "$,.0f", color=BLUE, height=270,
-                         hover="%{y}: %{x:$,.0f}/mo<extra></extra>").update_xaxes(tickformat="$,.0f"), width="stretch")
-with c2:
-    st.metric("All-in monthly cost", money(total),
-              delta=f"{(total - parts['Principal & interest']) / total:.0%} is tax, insurance & fees", delta_color="off")
-    st.metric("Income needed (28% rule)", money(total * 12 / 0.28) + "/yr")
-    st.metric(f"Avg household income in {h.zipcode}", money(h.zip_avg_agi) + "/yr", help="IRS average adjusted gross income per return, 2021")
-    if pd.notna(h.rentZestimate):
-        cheaper = "renting" if h.rentZestimate < total else "owning"
-        st.metric("Renting a similar home", money(h.rentZestimate) + "/mo",
-                  delta=f"{cheaper} is {money(abs(total - h.rentZestimate))}/mo cheaper", delta_color="off")
-if pd.notna(h.zip_value_change_since_listing):
-    st.caption(f"Market since this snapshot: typical home values in {h.zipcode} changed "
-               f"{h.zip_value_change_since_listing:+.1%} from June 2024 to Sept 2026 (Zillow Home Value Index). "
-               f"In the year before the listing: {h.zip_zhvi_1y_growth:+.1%}.")
+tab1, tab2, tab3 = st.tabs(["Price check", "Monthly cost", "ZIP price trend"])
+with tab1:
+    c1, c2 = st.columns([1, 1.6], gap="large")
+    with c1:
+        if isinstance(h.imgSrc, str):
+            st.image(h.imgSrc, width="stretch")
+        st.markdown(f"{h.bedrooms:.0f} bd · {h.bathrooms:g} ba · {h.livingArea:,.0f} sqft · built {h.yearBuilt:.0f}  \n"
+                    f"[View on Zillow ↗]({h.detailUrl})")
+    with c2:
+        st.plotly_chart(plot_range(h.price, h.fair_lo, h.fair_value, h.fair_hi), width="stretch")
+        start, steps = driver_waterfall(h.shap_base, {f: h[f"shap__{f}"] for f in FEATURES}, h.fair_value)
+        st.plotly_chart(plot_waterfall(start, steps, h.fair_value), width="stretch")
+with tab2:
+    parts = monthly_cost(h.price, **cost_inputs("report"))
+    total = sum(parts.values())
+    c1, c2 = st.columns([1.4, 1], gap="large")
+    with c1:
+        st.plotly_chart(hbar(list(parts), list(parts.values()), "$,.0f", color=BLUE, height=260,
+                             hover="%{y}: %{x:$,.0f}/mo<extra></extra>").update_xaxes(tickformat="$,.0f"), width="stretch")
+    with c2:
+        stat_tiles([(money(total), "all-in per month", None, True), (money(total * 12 / 0.28), "income needed / yr", "28% rule")])
+        if pd.notna(h.rentZestimate):
+            st.caption(f"Renting a similar home: about {md_money(h.rentZestimate)}/month.")
+with tab3:
+    hist = zip_value_history()
+    since = hist.loc["2012-01-01":]
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=since.index, y=since.median(axis=1), mode="lines", name="Houston-area median",
+                             line=dict(color=MUTED, width=2), hovertemplate="%{x|%b %Y}: %{y:$,.0f}<extra></extra>"))
+    if h.zipcode in since.columns:
+        fig.add_trace(go.Scatter(x=since.index, y=since[h.zipcode], mode="lines", name=f"ZIP {h.zipcode}",
+                                 line=dict(color=BLUE, width=2.5), hovertemplate="%{x|%b %Y}: %{y:$,.0f}<extra></extra>"))
+    fig.add_vline(x=pd.Timestamp("2024-06-01"), line=dict(color=INK_2, width=1, dash="dot"))
+    style(fig, 320, showlegend=True, legend=dict(orientation="h", y=1.12, x=0), hovermode="x unified",
+          margin=dict(l=10, r=20, t=40, b=10))
+    fig.update_yaxes(tickformat="$,.0f", title="Typical home value (Zillow)")
+    st.plotly_chart(fig, width="stretch")
+    st.caption(f"Dotted line: our June 2024 listing snapshot. Since then, typical values in {h.zipcode} changed "
+               f"{h.zip_value_change_since_listing:+.1%}.")

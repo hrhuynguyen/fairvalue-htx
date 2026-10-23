@@ -1,4 +1,4 @@
-# FairValue HTX
+# XMarket
 
 **Is this Houston home fairly priced, and can I actually afford it?**
 UH CodeCoogs AI Hackathon 2026 · Track 2: Houston Housing Market Intelligence
@@ -30,6 +30,8 @@ kaggle datasets download -d mohamedalmansop/houston-housing-market-2024-clean-da
 curl -L -o data/external/irs_soi_21zpallnoagi.csv https://www.irs.gov/pub/irs-soi/21zpallnoagi.csv
 curl -L -o data/external/zhvi_zip.csv https://files.zillowstatic.com/research/public_csvs/zhvi/Zip_zhvi_uc_sfrcondo_tier_0.33_0.67_sm_sa_month.csv
 curl -L -o data/external/zori_zip.csv https://files.zillowstatic.com/research/public_csvs/zori/Zip_zori_uc_sfrcondomfr_sm_month.csv
+curl -L -o data/external/tx_zip_geo.json https://raw.githubusercontent.com/OpenDataDE/State-zip-code-GeoJSON/master/tx_texas_zip_codes_geo.min.json
+# (the app uses data/external/houston_zip_geo.json: the 159 Houston ZIPs from that file, coordinates rounded)
 unzip -o "data/raw/houston_housing%20market%202024_light.json.zip" -d data/raw
 .venv/bin/python src/build_dataset.py       # clean + join  -> data/processed/listings.parquet, reports/cleaning.json
 cd src && ../.venv/bin/python train.py      # CV, intervals, SHAP, final model -> models/, reports/metrics.json
@@ -37,7 +39,7 @@ cd src && ../.venv/bin/python train.py      # CV, intervals, SHAP, final model -
 ../.venv/bin/python ensemble.py             # ensemble weighting experiment -> reports/ensemble.json
 ```
 
-The **Ask FairValue** page calls Claude (`claude-opus-5-5`) and needs `ANTHROPIC_API_KEY` in the environment or in `.env`.
+The **Ask XMarket** page calls Claude (`claude-opus-5-5`) and needs `ANTHROPIC_API_KEY` in the environment or in `.env`.
 Everything else runs offline.
 
 ## Project layout
@@ -64,6 +66,7 @@ PITCH.md               5-minute talk track, demo script, judge Q&A
 | [Houston Housing Market 2024 (clean CSV)](https://www.kaggle.com/datasets/mohamedalmansop/houston-housing-market-2024-clean-dataset) | year built | same |
 | [IRS SOI ZIP code data](https://www.irs.gov/statistics/soi-tax-stats-individual-income-tax-statistics-zip-code-data-soi) | average household income per ZIP | tax year 2021 |
 | [Zillow Research ZHVI / ZORI](https://www.zillow.com/research/data/) | ZIP typical home value, trend, rent | 2000 – Sept 2026 |
+| [ZIP code boundaries](https://github.com/OpenDataDE/State-zip-code-GeoJSON) (US Census ZCTA) | ZIP price map on the Data page | 2010 boundaries |
 
 ## Method in brief
 

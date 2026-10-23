@@ -8,7 +8,7 @@ from common import BLUE, INK_2, default_pool, load_scored, md_money, money, page
 ORANGE = "#eb6834"  # categorical slot 2: the 'rent' series
 scored = load_scored()
 
-page_header("CREATIVE · AFFORDABLE HOUSING", "Rent or buy?",
+page_header("CREATIVE 3 · RENT VS. BUY", "Rent or buy?",
             "For a home, after how many years does **buying** leave you wealthier than **renting** the same home and investing the "
             "money you didn't spend on a down payment? It's the question every first-time buyer asks.")
 

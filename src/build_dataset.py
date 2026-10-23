@@ -80,7 +80,7 @@ def load_raw() -> pd.DataFrame:
 
 def load_year_built() -> pd.Series:
     clean = pd.read_csv(RAW / "properties_clean_v2.csv", usecols=["zpid", "yearBuilt"])
-    clean.loc[clean.yearBuilt == 2001.5, "yearBuilt"] = np.nan  # median imputation artifact
+    clean.loc[clean.yearBuilt == 2001.5, "yearBuilt"] = np.nan  # placeholder fill-in, not a real year
     return clean.set_index("zpid").yearBuilt
 
 
@@ -146,6 +146,14 @@ def write_cleaning_report(log, df, latest):
     json.dump(facts, open(ROOT / "reports/cleaning.json", "w"), indent=2, default=str)
 
 
+def write_zhvi_extract(zips):
+    """Houston-area slice of the 124 MB Zillow file (all months), small enough to ship with the app."""
+    z = pd.read_csv(EXT / "zhvi_zip.csv", dtype={"RegionName": str})
+    z["RegionName"] = z.RegionName.str.zfill(5)
+    keep = (z.State == "TX") & (z.Metro.fillna("").str.startswith("Houston") | z.RegionName.isin(zips))
+    z[keep].drop(columns=["RegionID", "SizeRank", "RegionType", "StateName"]).to_parquet(OUT / "zhvi_houston.parquet", index=False)
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     df = load_raw()
@@ -179,6 +187,7 @@ def main():
     df = df.reset_index(drop=True)
     df.to_parquet(OUT / "listings.parquet", index=False)
     write_cleaning_report(log, df, latest)
+    write_zhvi_extract(set(df.zipcode))
 
     print("Cleaning funnel:")
     for step, n in log:

@@ -1,4 +1,4 @@
-"""Claude-powered helpers for the Ask FairValue page.
+"""Claude-powered helpers for the Ask XMarket page.
 
 Claude never invents prices: it only turns a plain-English request into search filters, and turns
 our model's numbers for one home into a short plain-English explanation.
@@ -76,7 +76,7 @@ Rules:
 Cities in the data: {cities}
 ZIP codes in the data: {zips}"""
 
-EXPLAIN_SYSTEM = """You are FairValue, a friendly and careful Houston housing guide for first-time buyers.
+EXPLAIN_SYSTEM = """You are XMarket, a friendly and careful Houston housing guide for first-time buyers.
 You receive one home's facts and our machine-learning model's numbers. Write 4 short paragraphs in plain English (under 170 words total):
 1. Verdict: is the asking price below, within, or above our fair-value range, by how much?
 2. Why: the 2-3 biggest price drivers, in everyday words.

@@ -1,55 +1,72 @@
 import numpy as np
+import plotly.graph_objects as go
 import streamlit as st
 
-from common import (FEATURES, HUBS, driver_waterfall, haversine_mi, load_listings, load_model, md_money, money,
-                    page_header, plot_waterfall)
-from features import prepare
-
-model = load_model()
-listings = load_listings()
+from common import (BLUE, FEATURES, INK_2, app_guide, driver_waterfall, load_model, load_scored, money, page_header,
+                    plot_waterfall, price_homes, stat_tiles, style, zip_centers)
 
 page_header("APPLICATION 1 · HOUSING PRICE PREDICTION", "Price any home",
-            "Describe a home, even one that isn't for sale, and get its fair price, an honest range, and the reasons behind it.")
+            "For buyers and sellers: a fair price for any Houston home, listed or not, in seconds.")
+app_guide(["Pick the **ZIP code** and **home type**.", "Enter **size, bedrooms, bathrooms** and **year built**.",
+           "Read the **fair value**, its **80% range**, and **what drives the price**."],
+          "A 3-bed, 2-bath, 1,800 sqft house built in 2005 in **77004** (Third Ward, next to UH). Its fair value is "
+          "shown below. Change any input and everything updates instantly.")
 
-zips = listings.groupby("zipcode").agg(lat=("latitude", "median"), lon=("longitude", "median"),
-                                       city=("city", lambda s: s.mode().iat[0]), n=("zpid", "size"))
-zips = zips[zips.n >= 10]
+zc = zip_centers()
 c = st.columns(4)
-z = c[0].selectbox("ZIP code", zips.index, index=list(zips.index).index("77004") if "77004" in zips.index else 0,
-                   format_func=lambda z: f"{z} · {zips.at[z, 'city']}")
-htype = c[1].selectbox("Home type", ["SINGLE_FAMILY", "TOWNHOUSE", "CONDO", "MULTI_FAMILY", "MANUFACTURED"],
-                       format_func=lambda t: t.replace("_", " ").title())
-sqft = c[2].number_input("Living area (sqft)", 300, 20000, 1800, 50)
+z = c[0].selectbox("ZIP code", list(zc.index), index=list(zc.index).index("77004"), format_func=lambda z: f"{z} · {zc.at[z, 'city']}")
+htype = c[1].selectbox("Home type", ["SINGLE_FAMILY", "TOWNHOUSE", "CONDO"], format_func=lambda t: t.replace("_", " ").title())
+sqft = c[2].number_input("Living area (sqft)", 400, 10_000, 1800, 50)
 year = c[3].number_input("Year built", 1900, 2025, 2005)
 c = st.columns(4)
-bd = c[0].number_input("Bedrooms", 0, 10, 3)
-ba = c[1].number_input("Bathrooms", 0.0, 10.0, 2.0, 0.5)
-lot = c[2].number_input("Lot size (sqft)", 0, 500000, 6000, 250)
-newb = c[3].checkbox("New construction", value=year >= 2023)
+beds = c[0].number_input("Bedrooms", 1, 8, 3)
+baths = c[1].number_input("Bathrooms", 1.0, 8.0, 2.0, 0.5)
+with c[2]:
+    with st.expander("More details"):
+        lot = st.number_input("Lot size (sqft)", 0, 200_000, 6000, 250)
+        new = st.checkbox("New construction", value=year >= 2023)
 
-row = listings[listings.zipcode == z].iloc[[0]].copy()
-row = row.assign(latitude=zips.at[z, "lat"], longitude=zips.at[z, "lon"], bedrooms=bd, bathrooms=ba,
-                 livingArea=sqft, lot_sqft=lot or np.nan, yearBuilt=year, homeType=htype,
-                 is_new_construction=newb, has_builder=newb, is_premier_builder=False, is_bank_owned=False, is_auction=False)
-for name, (lat, lon) in HUBS.items():
-    row[f"dist_{name}_mi"] = haversine_mi(row.latitude, row.longitude, lat, lon)
-row["bed_bath_ratio"] = bd / ba if ba else np.nan
-row["sqft_per_bed"] = sqft / bd if bd else np.nan
-row = row.join(model["comps"].query(row, exclude_self=False))
-X = prepare(row, model["categories"])[FEATURES]
-log_mid = model["point"].predict(X)[0]
-band = np.searchsorted(model["band_edges"], log_mid)  # interval calibration is per price band
-mid = float(np.exp(log_mid))
-lo = min(float(np.exp(model["lo"].predict(X)[0] - model["band_adj"][band, 0])), mid)
-hi = max(float(np.exp(model["hi"].predict(X)[0] + model["band_adj"][band, 1])), mid)
+spec = dict(zipcode=z, homeType=htype, sqft=sqft, beds=beds, baths=baths, year=year, lot=lot, new=new)
+X, mid, lo, hi = price_homes([spec])
+stat_tiles([(money(mid[0]), "fair value", None, True),
+            (f"${lo[0] / 1e3:,.0f}k – {hi[0] / 1e3:,.0f}k", "80% range", "8 in 10 similar homes list inside it"),
+            (f"${mid[0] / sqft:,.0f}", "per sqft", f"ZIP {z}")])
 
-k = st.columns(3)
-k[0].metric("Estimated fair value", money(mid))
-k[1].metric("80% range", f"{md_money(lo)} – {md_money(hi)}")
-k[2].metric("Per square foot", money(mid / sqft))
-st.markdown("**Why this price?** Start from the average listing, then each factor pushes the price up or down:")
-base, sv = model["point"].contributions(X)  # exact SHAP for the weighted ensemble
-start, steps = driver_waterfall(float(base[0]), dict(zip(FEATURES, sv[0])), mid)
-st.plotly_chart(plot_waterfall(start, steps, mid), width="stretch")
-st.caption(f"Location uses the center of ZIP {z}. 'Nearby comparable homes' = the 10 closest listings. "
-           "Try changing one input at a time to see what it's worth.")
+c1, c2 = st.columns([1.1, 1], gap="large")
+with c1:
+    st.markdown("**Why this price**")
+    base, contrib = load_model()["point"].contributions(X)
+    start, steps = driver_waterfall(float(base[0]), dict(zip(FEATURES, contrib[0])), mid[0])
+    st.plotly_chart(plot_waterfall(start, steps, mid[0]), width="stretch")
+with c2:
+    st.markdown("**How size moves the price**")
+    sizes = np.arange(max(400, sqft - 1200), sqft + 1250, 100)
+    _, curve_mid, curve_lo, curve_hi = price_homes([{**spec, "sqft": int(v)} for v in sizes])
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=sizes, y=curve_hi, mode="lines", line=dict(width=0), hoverinfo="skip", showlegend=False))
+    fig.add_trace(go.Scatter(x=sizes, y=curve_lo, mode="lines", line=dict(width=0), fill="tonexty",
+                             fillcolor="rgba(42,120,214,0.15)", hoverinfo="skip", name="80% range"))
+    fig.add_trace(go.Scatter(x=sizes, y=curve_mid, mode="lines", line=dict(color=BLUE, width=2.5), name="Fair value",
+                             hovertemplate="%{x:,} sqft: %{y:$,.0f}<extra></extra>"))
+    fig.add_trace(go.Scatter(x=[sqft], y=[mid[0]], mode="markers", marker=dict(color=INK_2, size=10), name="This home",
+                             hovertemplate="This home: %{y:$,.0f}<extra></extra>"))
+    style(fig, 360, showlegend=True, legend=dict(orientation="h", y=1.1, x=0), margin=dict(l=10, r=20, t=40, b=10))
+    fig.update_xaxes(title="Living area (sqft)")
+    fig.update_yaxes(tickformat="$,.0f")
+    st.plotly_chart(fig, width="stretch")
+
+st.markdown("**Similar homes listed in this ZIP code**")
+scored = load_scored()
+comps = scored[(scored.zipcode == z) & (scored.homeType == htype) & scored.livingArea.between(sqft * 0.75, sqft * 1.25)]
+comps = comps.assign(diff=(comps.livingArea - sqft).abs()).nsmallest(5, "diff")
+if len(comps):
+    st.dataframe(comps[["address", "price", "fair_value", "livingArea", "bedrooms", "bathrooms", "yearBuilt", "detailUrl"]],
+                 hide_index=True, width="stretch", column_config={
+                     "address": "Address", "price": st.column_config.NumberColumn("Asking", format="$%,.0f"),
+                     "fair_value": st.column_config.NumberColumn("Our fair value", format="$%,.0f"),
+                     "livingArea": st.column_config.NumberColumn("Sqft", format="%,d"),
+                     "bedrooms": st.column_config.NumberColumn("Beds", format="%d"), "bathrooms": "Baths",
+                     "yearBuilt": st.column_config.NumberColumn("Built", format="%d"),
+                     "detailUrl": st.column_config.LinkColumn("Listing", display_text="Zillow ↗")})
+else:
+    st.caption("No listings of this type and size in this ZIP code.")

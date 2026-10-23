@@ -5,16 +5,45 @@ import streamlit as st
 
 from common import (BLUE, INK_2, MUTED, hbar, insight, load_json, load_listings, load_scored, step_header, style, table,
                     takeaway)
-from features import CompsIndex
+from features import FEATURES, HUB_DIST, LISTING_FLAGS, LOCATION, SPATIAL_LAG, ZIP_MARKET, CompsIndex
 
 scored = load_scored()
 metrics = load_json("metrics.json")
 imp = pd.Series(metrics["shap_importance"])
 rank = imp.rank(ascending=False).astype(int)
 
-step_header(4, 6, "Feature engineering",
-            "Raw columns only describe the house. We engineered features that describe its location the way a "
-            "buyer thinks about it: commute, neighbors, and neighborhood.")
+step_header(4, 7, "Feature engineering")
+
+stages = metrics["stages"]
+n_engineered = 2 + len(HUB_DIST) + len(SPATIAL_LAG) + len(ZIP_MARKET)  # 2 ratios + commute + comps + ZIP context
+st.markdown("### Summary")
+st.markdown(f"We started from the raw columns that describe the house itself (size, rooms, lot, year built, home type, exact "
+            f"location and listing flags: {len(FEATURES) - n_engineered} inputs) and added **{n_engineered} engineered features** that "
+            "describe it the way a buyer thinks: **ratios** (bedrooms per bathroom, sqft per bedroom), **commute** (straight-line "
+            f"miles to {len(HUB_DIST)} job hubs), **nearby comps** (the median price and price per sqft of the 10 closest *other* "
+            "listings, built without ever seeing the home's own price) and **neighborhood context** (ZIP income from the IRS; "
+            f"typical home value, growth and rent from Zillow). That gives the model **{len(FEATURES)} inputs**. We then measured "
+            "how much each input matters (below) and how much each idea cuts the error (Step 6): with one LightGBM model, going "
+            f"from structure alone to the full feature set takes the typical error from **{stages[1]['MdAPE_%']:.1f}% to "
+            f"{stages[6]['MdAPE_%']:.1f}%**.")
+
+st.code("""# ratios
+df["bed_bath_ratio"] = df["bedrooms"] / df["bathrooms"]
+df["sqft_per_bed"] = df["livingArea"] / df["bedrooms"]
+
+# commute: straight-line miles to 5 job hubs (Haversine formula)
+for hub, (lat, lon) in HUBS.items():   # downtown, tmc, galleria, energy_corridor, uh
+    df[f"dist_{hub}_mi"] = haversine_mi(df["latitude"], df["longitude"], lat, lon)
+
+# nearby comps: the 10 closest OTHER listings (training homes only during cross-validation)
+tree = BallTree(np.radians(train[["latitude", "longitude"]]), metric="haversine")
+dist, idx = tree.query(np.radians(df[["latitude", "longitude"]]), k=11)   # 10 neighbors + self
+idx = idx[:, 1:]                                                          # drop self
+df["knn_log_ppsf"] = np.median(np.log(train_price / train_sqft)[idx], axis=1)
+df["knn_log_price"] = np.median(np.log(train_price)[idx], axis=1)
+
+# neighborhood context, joined by ZIP code
+df = df.merge(irs_by_zip, on="zipcode").merge(zillow_by_zip, on="zipcode")""", language="python")
 
 st.markdown("### Which inputs matter most?")
 NICE = {"livingArea": "Living area", "knn_log_price": "Neighbors' median price", "knn_log_ppsf": "Neighbors' $/sqft",
@@ -29,6 +58,12 @@ NICE = {"livingArea": "Living area", "knn_log_price": "Neighbors' median price",
 top = (imp / imp.sum()).sort_values(ascending=False).head(15)
 engineered = {"knn_log_price", "knn_log_ppsf", "knn_dist_mi", "sqft_per_bed", "bed_bath_ratio", "zip_avg_agi", "zip_zhvi",
               "zip_zori", "zip_zhvi_5y_growth", "zip_zhvi_1y_growth", "zip_tax_returns"} | {f for f in imp.index if f.startswith("dist_")}
+share = imp / imp.sum()
+imp_code = "\n".join(f"# {f:<16} {v:.0%}" for f, v in share.sort_values(ascending=False).head(5).items())
+st.code(f"""base, contrib = ensemble.contributions(X)   # SHAP value per home, per input
+share = np.abs(contrib).mean(axis=0) / np.abs(contrib).mean(axis=0).sum()
+share.sort_values(ascending=False).head(5)
+{imp_code}""", language="python")
 c1, c2 = st.columns([1.5, 1], gap="large")
 with c1:
     st.plotly_chart(hbar([NICE.get(f, f) for f in top.index], list(top.values), ".0%", height=520,
@@ -84,14 +119,19 @@ st.warning("**Why isn't the home's own price per square foot a feature?** Becaus
            "and never include the home itself (we explicitly drop it from its own neighbor list).")
 
 st.markdown("### Does the 'nearby comps' feature actually work?")
+s = scored[scored.livingArea.notna()].sample(4000, random_state=1)
+# Neighbors come only from homes outside this sample, so no home is its own comp.
+lst = load_listings()
+comps = CompsIndex(lst[~lst.zpid.isin(s.zpid)]).query(s, exclude_self=False)
+x, y = np.exp(comps.knn_log_ppsf), s.price / s.livingArea
+r = np.corrcoef(np.log(x), np.log(y))[0, 1]
+st.code(f"""sample = df.sample(4000, random_state=1)
+neighbors = CompsIndex(df[~df.zpid.isin(sample.zpid)])   # comps from homes OUTSIDE the sample
+comps = neighbors.query(sample)
+np.corrcoef(comps["knn_log_ppsf"], np.log(sample["price"] / sample["livingArea"]))[0, 1]
+# -> {r:.2f}""", language="python")
 c1, c2 = st.columns([1.2, 1])
 with c1:
-    s = scored[scored.livingArea.notna()].sample(4000, random_state=1)
-    # Neighbors come only from homes outside this sample, so no home is its own comp.
-    lst = load_listings()
-    comps = CompsIndex(lst[~lst.zpid.isin(s.zpid)]).query(s, exclude_self=False)
-    x, y = np.exp(comps.knn_log_ppsf), s.price / s.livingArea
-    r = np.corrcoef(np.log(x), np.log(y))[0, 1]
     fig = go.Figure(go.Scattergl(x=x, y=y, mode="markers", marker=dict(color=BLUE, size=5, opacity=0.3),
                                  hovertemplate="neighbors $%{x:.0f}/sqft<br>this home $%{y:.0f}/sqft<extra></extra>"))
     fig.add_trace(go.Scatter(x=[50, 800], y=[50, 800], mode="lines", line=dict(color=INK_2, dash="dot", width=1), hoverinfo="skip"))
@@ -104,9 +144,7 @@ with c2:
     st.metric("Correlation (log scale)", f"{r:.2f}")
     insight("A home's price per sqft closely tracks its neighbors' (dots hug the dotted 'equal' line). This one feature "
             "packs in school zones, flood risk and street appeal, things that aren't in the data directly.")
-    st.markdown("**How it's built without cheating:** for each home, find the 10 closest *other* listings (BallTree search on "
-                "latitude/longitude). During testing, neighbors come only from the training homes.")
 
 takeaway("Location features turned raw coordinates into things humans understand: **commute**, **comparable homes**, "
          "and **neighborhood income**. On the next page, each one gets an error-reduction score.")
-st.page_link("views/model.py", label="Next: training the model →", icon="🤖")
+st.page_link("views/metric.py", label="Next: choosing our metric →")

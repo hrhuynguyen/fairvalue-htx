@@ -2,14 +2,13 @@ import pandas as pd
 import pydeck as pdk
 import streamlit as st
 
-import plotly.graph_objects as go
-
-from common import BLUE, SEQ, hbar, hex_rgb, load_json, load_listings, stat_tiles, step_header, style, table, takeaway
+from common import (BLUE, SEQ, hbar, hex_rgb, insight, load_json, load_listings, money, stat_tiles, step_header, table,
+                    takeaway, zip_choropleth)
 
 facts = load_json("cleaning.json")
 listings = load_listings()
 
-step_header(1, 6, "The data",
+step_header(1, 7, "The data",
             "We combined one listings dataset with two public datasets, so every home has its size, location, "
             "and the income and price trends of its ZIP code.")
 
@@ -31,12 +30,28 @@ sources = pd.DataFrame([
 ])
 table(sources.set_index("Dataset"))
 
+st.markdown("#### A peek at the combined data")
+st.code('df = pd.read_parquet("data/processed/listings.parquet")\ndf.head()', language="python")
+st.dataframe(listings.head(), width="stretch")
+st.caption(f"{listings.shape[0]:,} rows × {listings.shape[1]} columns (scroll sideways to see them all). Listing columns come "
+           "from Zillow; yearBuilt from the clean CSV; zip_avg_agi and zip_tax_returns from the IRS; zip_zhvi* and zip_zori from "
+           "Zillow Research; dist_*, age, bed_bath_ratio and sqft_per_bed are engineered (Step 4). "
+           "Empty cells (None/NaN) are missing values we left missing on purpose.")
+
 stat_tiles([
     (f"{facts['n_final']:,}", "homes after cleaning", "from 25,948 raw listings", True),
     (str(facts["n_zips"]), "ZIP codes", None),
     (str(facts["n_cities"]), "cities and towns", None),
     (f"{facts['new_construction_share']:.0%}", "brand-new construction", None),
 ])
+
+counts_code = "\n".join(f"# {t:<14} {n:,}" for t, n in listings.homeType.value_counts().items())
+st.code(f"""len(df)                            # homes after cleaning   -> {len(listings):,}
+df["zipcode"].nunique()            # ZIP codes              -> {listings.zipcode.nunique()}
+df["city"].nunique()               # cities and towns       -> {listings.city.nunique()}
+df["is_new_construction"].mean()   # brand-new construction -> {listings.is_new_construction.mean():.2f}
+df["homeType"].value_counts()      # home types
+{counts_code}""", language="python")
 
 c1, c2, c3 = st.columns(3, gap="large")
 with c1:
@@ -55,15 +70,28 @@ with c3:
     st.plotly_chart(hbar(list(comp), list(comp.values()), ".0%", color=SEQ[4], height=240).update_xaxes(range=[0, 1.15], tickformat=".0%"),
                     width="stretch")
 
-st.markdown("#### Geographic coverage")
-st.pydeck_chart(pdk.Deck(
-    map_provider="carto", map_style="light",
-    initial_view_state=pdk.ViewState(latitude=29.80, longitude=-95.45, zoom=8.3),
-    layers=[pdk.Layer("ScatterplotLayer", listings, get_position=["longitude", "latitude"], get_fill_color=hex_rgb(BLUE, 120),
-                      get_radius=80, radius_min_pixels=1.5, pickable=False)],
-), height=380)
-st.caption("Every dot is one home for sale. Coverage runs from Conroe in the north to Galveston Bay in the south, "
-           "and from Waller and Fulshear in the west to Baytown in the east: mainly Harris, Fort Bend, Montgomery, Brazoria and Galveston counties.")
+st.markdown("#### Geographic coverage: median home price by ZIP code")
+st.code('zip_price = df.groupby("zipcode")["price"].median()', language="python")
+zp = listings.groupby("zipcode").agg(median=("price", "median"), n=("price", "size"), city=("city", lambda c: c.mode().iat[0]),
+                                     condo=("homeType", lambda t: (t == "CONDO").mean()))
+zip_choropleth(zp, "median", money, "median price")
+solid = zp[zp.n >= 10]
+top3, low3 = solid.nlargest(3, "median"), solid.nsmallest(3, "median")
+insight("Prices are highest in the **inner Loop and west side** (" +
+        ", ".join(f"{z} {r.city} {money(r['median'])}" for z, r in top3.iterrows()) +
+        "). The lowest medians (" + ", ".join(f"{z} {money(r['median'])}" for z, r in low3.iterrows()) +
+        f") are in ZIP codes where {low3.condo.min():.0%}–{low3.condo.max():.0%} of listings are **condos**: a ZIP's median "
+        "depends on its mix of home types, which is why our model prices each home individually.")
+with st.expander("Show every listing as a dot"):
+    st.pydeck_chart(pdk.Deck(
+        map_provider="carto", map_style="light",
+        initial_view_state=pdk.ViewState(latitude=29.80, longitude=-95.45, zoom=8.3),
+        layers=[pdk.Layer("ScatterplotLayer", listings, get_position=["longitude", "latitude"],
+                          get_fill_color=hex_rgb(BLUE, 120), get_radius=80, radius_min_pixels=1.5, pickable=False)],
+    ), height=380)
+st.caption("Coverage runs from Conroe in the north to Galveston Bay in the south, and from Waller and Fulshear in the west "
+           "to Baytown in the east: mainly Harris, Fort Bend, Montgomery, Brazoria and Galveston counties. "
+           "ZIP boundaries: US Census ZCTAs (2010), via OpenDataDE.")
 
 st.markdown("#### What the important columns mean")
 dictionary = pd.DataFrame([
@@ -97,4 +125,4 @@ with c2:
 
 takeaway("The listings tell us *what* the home is and *where* it is. The public data tells us *who can afford it* "
          "and *how its neighborhood's prices are moving*.")
-st.page_link("views/eda.py", label="Next: exploring the data →", icon="🔍")
+st.page_link("views/eda.py", label="Next: exploring the data →")

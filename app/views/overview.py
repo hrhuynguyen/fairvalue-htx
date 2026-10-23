@@ -10,7 +10,7 @@ scored = load_scored()
 best = metrics["stages"][-1]
 afford_75k = (scored.price <= max_affordable_price(75_000)).mean()
 
-page_header("UH CodeCoogs AI Hackathon 2026 · Track 2", "FairValue HTX",
+page_header("UH CodeCoogs AI Hackathon 2026 · Track 2", ":blue[X]Market",
             "Is this Houston home fairly priced, and can I actually afford it? We trained a model on 19,430 listings to "
             "estimate every home's **fair price**, without ever looking at its asking price.")
 
@@ -44,22 +44,28 @@ with c1:
     fig.update_yaxes(type="log", range=[np.log10(6e4), np.log10(6e6)], title="Asking price", **ticks)
     st.plotly_chart(fig, width="stretch")
 with c2:
-    st.markdown("### Meet Maya")
+    st.markdown("### Case study")
     st.markdown("A new UH graduate earning **\\$75,000** at the Texas Medical Center. She wants her first home within 15 miles "
-                "of work for under **\\$1,750 a month**, all-in.")
+                "of work for under **\\$1,750 a month**. In this project, we will analyze the Houston Housing Market.")
     st.markdown("#### Her three questions")
     st.markdown("1. **What's a fair price** for this home?\n"
                 "2. **What can I afford**, once Texas taxes and insurance are included?\n"
                 "3. **Which listings are bargains**, and which are overpriced?")
-    st.caption("Left: 9,000 homes. Dots on the dotted line are priced exactly at our fair value; blue dots below it are "
-               "listed under our 80% fair range, red dots above it are listed over.")
+    counts = scored.flag.value_counts()
+    share = counts / len(scored)
+    st.markdown(f"Of all **{len(scored):,}** homes, **{counts['Fair']:,} ({share['Fair']:.0%})** are priced within our fair "
+                f"range (gray), **{counts['Underpriced']:,} ({share['Underpriced']:.0%})** are listed below it (blue) and "
+                f"**{counts['Overpriced']:,} ({share['Overpriced']:.0%})** above it (red). The other {counts['Verify first']:,} have "
+                "gaps so extreme they're set aside to verify first.")
+    st.caption("Chart: a random 9,000 of those homes. On the dotted line = asking price equals our fair value.")
 
 st.markdown("### How we built it")
 steps = [("1", "Data", "25,948 listings + IRS income + Zillow ZIP trends"), ("2", "Explore", "What drives Houston prices?"),
          ("3", "Clean", "Remove land, floor plans, errors"), ("4", "Features", "Commute, nearby comps, ZIP income"),
-         ("5", "Model", "Linear baseline → boosted trees"), ("6", "Validate", "Honest tests, no leakage, vs. Zillow"),
-         ("→", "Apps", "Fair price, affordability, deals, AI search")]
+         ("5", "Metric", "Median % error: fair at every price"),
+         ("6", "Model", "Linear baseline → blend of boosted trees"), ("7", "Validate", "Honest tests, no leakage, vs. Zillow"),
+         ("8", "Apps", "Fair price, where to live, deals, AI search")]
 html_block('<div class="fv-steps">' + "".join(
     f'<div class="fv-step"><div class="fv-step-n">{n}</div><div class="fv-step-t">{t}</div><div class="fv-step-d">{d}</div></div>'
     for n, t, d in steps) + "</div>")
-st.page_link("views/data.py", label="Start the story: the data →", icon="📦")
+st.page_link("views/data.py", label="Start the story: the data →")

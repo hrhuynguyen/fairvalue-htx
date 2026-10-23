@@ -8,9 +8,16 @@ from common import BLUE, INK_2, MUTED, ROOT, insight, load_json, load_listings, 
 facts = load_json("cleaning.json")
 iss = facts["issues"]
 
-step_header(3, 6, "Cleaning the data",
-            "Garbage in, garbage out: we found four hidden problems in the 'clean' dataset, rebuilt it from the raw "
-            "Zillow data, and removed rows that aren't real homes for sale.")
+step_header(3, 7, "Cleaning the data")
+
+n_raw, n_final = facts["funnel"][0][1], facts["funnel"][-1][1]
+st.markdown("### Summary")
+st.markdown(f"The provided \"clean\" CSV hid four problems, so we rebuilt the dataset from the raw Zillow JSON: we converted "
+            "acre lot sizes to square feet, turned the fake 2001.5 build years back into missing, and removed "
+            f"**{n_raw - n_final:,} rows** that aren't homes for sale or are clearly wrong (floor-plan ads, vacant land, missing "
+            f"price or location, impossible prices or sizes), going from **{n_raw:,} listings to {n_final:,} homes**. Where only "
+            "one field was wrong, we blanked that field instead of deleting the home, and we kept Zillow's and the county's own "
+            "price estimates out of the model's inputs.")
 
 st.markdown("### Problems we found (and why they matter)")
 cards = [
@@ -22,7 +29,7 @@ cards = [
     ("📏", f"{iss['raw_lot_in_acres']:,}", "lot sizes in acres",
      "The clean CSV dropped the unit column, so '0.3' (acres) and '6,769' (sqft) sat in the same column."),
     ("📅", f"{iss['clean_csv_year_2001_5']:,}", "fake build years",
-     "Missing years were filled with 2001.5, the median. A made-up value looks real to a model."),
+     "Missing years were filled with the placeholder 2001.5, a year no home was built in. A made-up value looks real to a model."),
 ]
 cols = st.columns(4)
 for col, (icon, n, what, why) in zip(cols, cards):
@@ -31,6 +38,14 @@ for col, (icon, n, what, why) in zip(cols, cards):
             st.markdown(f"### {icon} {n}")
             st.markdown(f"**{what}**")
             st.caption(why)
+st.code(f"""raw = load_raw()   # original Zillow scrape, flattened from JSON (src/build_dataset.py)
+clean = pd.read_csv("properties_clean_v2.csv")   # the provided "clean" file
+
+(raw["group_type"] == "BUILDER_COMMUNITY").sum()   # -> {iss['raw_builder_plans']:,} builder floor plans
+(raw["homeType"] == "LOT").sum()                    # -> {iss['raw_lots_land']:,} vacant land lots
+(raw["lotAreaUnit"] == "acres").sum()               # -> {iss['raw_lot_in_acres']:,} lot sizes in acres
+(clean["yearBuilt"] == 2001.5).sum()                # -> {iss['clean_csv_year_2001_5']:,} fake build years""", language="python")
+
 PROBLEM = "#ec835a"  # status 'serious': marks the bad data, never used for series
 
 
@@ -75,11 +90,26 @@ with c2:
 insight("A model would have learned that thousands of homes were built in the year 2001.5, and that a 0.3-acre lot is "
         "'smaller' than a 600-sqft patio. Charts like these are how we caught both.")
 
+st.code("""df["lot_sqft"] = np.where(df["lotAreaUnit"] == "acres",
+                          df["lotAreaValue"] * 43_560,   # 1 acre = 43,560 sqft
+                          df["lotAreaValue"])
+year = clean.set_index("zpid")["yearBuilt"].replace(2001.5, np.nan)   # fake year -> missing
+df["yearBuilt"] = df["zpid"].map(year)                                  # borrow only this column from the CSV""",
+        language="python")
 st.markdown("**Fix:** instead of trusting the pre-cleaned CSV, we rebuilt the dataset from the **raw Zillow JSON**, kept the lot "
             "unit and converted acres → sqft (× 43,560), and borrowed only `yearBuilt` from the CSV (turning 2001.5 back into *missing*).")
 
 st.markdown("### Step by step: from 25,948 listings to 19,430 homes")
 funnel = facts["funnel"]
+rows = dict(funnel)
+st.code(f"""df = df[df["group_type"] != "BUILDER_COMMUNITY"]                       # {rows['drop builder floor plans']:,} left
+df = df[df["homeType"] != "LOT"]                                       # {rows['drop vacant land']:,}
+df = df[df["latitude"].notna() & df["price"].notna()]                  # {rows['drop missing price/coords']:,}
+df = df[df["price"].between(50_000, 15_000_000)]                       # {rows['price in [$50k, $15M]']:,}
+df = df[df["livingArea"].isna() | df["livingArea"].between(300, 20_000)]   # {rows['living area in [300, 20k] sqft']:,}
+ppsf = df["price"] / df["livingArea"]
+df = df[ppsf.isna() | ppsf.between(25, 2_000)]                         # {rows['price/sqft in [$25, $2000]']:,} homes""",
+        language="python")
 why = {
     "raw listings": "Everything Zillow returned for Greater Houston.",
     "drop builder floor plans": "'From $X' floor-plan ads, not real homes.",
@@ -103,10 +133,17 @@ st.plotly_chart(fig, width="stretch")
 table(pd.DataFrame([{"Step": f, "Rows left": f"{n:,}", "Why": why[f]} for f, n in funnel]).set_index("Step"))
 
 st.markdown("### Other preprocessing decisions")
+st.code("""df.loc[~df["lot_sqft"].between(200, 50 * 43_560), "lot_sqft"] = np.nan   # bad field -> missing, keep the home
+df.loc[df["bedrooms"] > 15, "bedrooms"] = np.nan
+df.loc[df["bathrooms"] > 15, "bathrooms"] = np.nan
+y = np.log(df["price"])                                    # target: log price
+LEAKY = ["zestimate", "rentZestimate", "taxAssessedValue"]  # benchmarks only, never model inputs
+SELLER = ["daysOnZillow", "priceReduction"]                 # seller behavior: context only, not inputs""",
+        language="python")
 decisions = pd.DataFrame([
     ("Missing values (beds, sqft, lot, year)",
      "Left as *missing*. No fake zeros or medians.",
-     "Our model (LightGBM) learns the best way to handle a missing value. Filling with 0 would claim a home has 0 sqft."),
+     "Our tree models (CatBoost, XGBoost, LightGBM) learn the best way to handle a missing value. Filling with 0 would claim a home has 0 sqft."),
     ("Price target", "Predict log(price), then convert back.",
      "Prices are heavily skewed (Step 2). Logs turn '$20k off' into '% off', fair to cheap and expensive homes alike."),
     ("Leaky columns", "Removed Zestimate, rent Zestimate, tax-assessed value from the inputs.",
@@ -122,4 +159,4 @@ table(decisions.set_index("Decision"))
 
 takeaway("We kept **19,430 real homes**, fixed units, and never invented data. "
          "Every removed row has a written reason, so anyone can audit it.")
-st.page_link("views/features.py", label="Next: feature engineering →", icon="🛠️")
+st.page_link("views/features.py", label="Next: feature engineering →")
