@@ -1,0 +1,9 @@
+.env
+.venv/
+__pycache__/
+.DS_Store
+data/raw/*
+!data/raw/properties_clean_v2.csv
+data/external/
+src/catboost_info/
+reports/streamlit.log

@@ -1,0 +1,19 @@
+Linear regression (baseline)                       MdAPE 18.74%  R2 0.664
+Random forest                                      MdAPE 7.78%  R2 0.887
+LightGBM (gradient boosting)                       MdAPE 7.39%  R2 0.910
+Ensemble: average of LightGBM + random forest      MdAPE 7.35%  R2 0.905
+   train_MdAPE_%  validation_MdAPE_%
+0           3.58                7.38
+1           3.48                7.56
+2           3.55                6.99
+3           3.45                7.78
+4           3.54                7.34
+                     change  median_pct  median_dollars
+0               +1 bathroom         2.8         11530.3
+1    +1 bedroom (same sqft)        -1.0         -4042.4
+2  +250 sqft of living area         6.1         23775.0
+3          +10% living area         5.6         21563.0
+4      Built 10 years later         1.6          5957.0
+5       Double the lot size         9.6         35437.9
+6  Sold as new construction         3.7         12905.8
+7  Foreclosure / bank-owned       -19.7        -77631.1

@@ -1,0 +1,60 @@
+Matplotlib is building the font cache; this may take a moment.
+base models done in 55s {'LightGBM': 45, 'CatBoost': 241, 'XGBoost': 55, 'Random forest': 100}
+LightGBM                                      MdAPE 7.386
+CatBoost                                      MdAPE 7.225
+XGBoost                                       MdAPE 7.246
+Random forest                                 MdAPE 7.778
+Equal weights (simple average)                MdAPE 7.143  weights [0.25 0.25 0.25 0.25]
+Inverse-error weights (1 / MSE)               MdAPE 7.137  weights [0.26  0.279 0.255 0.206]
+Optimized weights, squared error              MdAPE 7.152  weights [0.2   0.712 0.088 0.   ]
+Optimized weights, absolute error             MdAPE 7.126  weights [0.137 0.643 0.221 0.   ]
+Stacking (ridge)                              MdAPE 7.133  coef [ 0.185  0.752  0.214 -0.144]
+{
+ "method": "Optimized weights, absolute error",
+ "weights": {
+  "LightGBM": 0.13676319311286247,
+  "CatBoost": 0.6426387698216443,
+  "XGBoost": 0.22059803706549327,
+  "Random forest": 0.0
+ },
+ "mdape_gain_pts": 0.2598582551217037,
+ "bootstrap_ci_95_pts": [
+  0.16930773228498483,
+  0.37000054928072745
+ ],
+ "folds_won": 5,
+ "per_fold": [
+  {
+   "fold": 1,
+   "LightGBM": 7.377727123357269,
+   "Ensemble": 7.100133502034689
+  },
+  {
+   "fold": 2,
+   "LightGBM": 7.562208268802095,
+   "Ensemble": 7.284818141744132
+  },
+  {
+   "fold": 3,
+   "LightGBM": 6.99022381607286,
+   "Ensemble": 6.775413729923652
+  },
+  {
+   "fold": 4,
+   "LightGBM": 7.778061976610134,
+   "Ensemble": 7.471925882910824
+  },
+  {
+   "fold": 5,
+   "LightGBM": 7.338564707989281,
+   "Ensemble": 7.018087433857256
+  }
+ ]
+}
+error correlation:
+                LightGBM  CatBoost  XGBoost  Random forest
+LightGBM          1.000     0.928    0.952          0.872
+CatBoost          0.928     1.000    0.920          0.871
+XGBoost           0.952     0.920    1.000          0.898
+Random forest     0.872     0.871    0.898          1.000
+done in 71s

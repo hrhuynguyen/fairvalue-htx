@@ -1,0 +1,60 @@
+{
+  "funnel": [
+    [
+      "raw listings",
+      25948
+    ],
+    [
+      "drop builder floor plans",
+      22548
+    ],
+    [
+      "drop vacant land",
+      19481
+    ],
+    [
+      "drop missing price/coords",
+      19472
+    ],
+    [
+      "price in [$50k, $15M]",
+      19454
+    ],
+    [
+      "living area in [300, 20k] sqft",
+      19445
+    ],
+    [
+      "price/sqft in [$25, $2000]",
+      19430
+    ]
+  ],
+  "issues": {
+    "clean_csv_rows": 25922,
+    "clean_csv_zero_beds": 3067,
+    "clean_csv_zero_sqft": 3067,
+    "clean_csv_year_2001_5": 3057,
+    "clean_csv_lot_under_100": 6253,
+    "raw_lot_in_acres": 5670,
+    "raw_builder_plans": 3400,
+    "raw_lots_land": 3067,
+    "raw_missing_sqft": 3156,
+    "raw_missing_beds": 3153,
+    "raw_missing_lot": 5938,
+    "raw_has_zestimate": 21521,
+    "raw_has_tax_value": 15571
+  },
+  "n_final": 19430,
+  "n_zips": 159,
+  "n_cities": 62,
+  "lat_range": [
+    29.41823,
+    30.264864
+  ],
+  "lon_range": [
+    -96.01035,
+    -94.92529
+  ],
+  "zhvi_latest_month": "2026-09-30",
+  "new_construction_share": 0.27539886773031397
+}

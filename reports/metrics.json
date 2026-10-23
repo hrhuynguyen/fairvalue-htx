@@ -1,0 +1,250 @@
+{
+  "n_listings": 19430,
+  "cv": "5-fold, grouped by location",
+  "stages": [
+    {
+      "stage": "0. Linear regression baseline (structure only)",
+      "MAE_$": 157886.25575149668,
+      "MdAE_$": 69786.68932387314,
+      "MdAPE_%": 18.737581851720194,
+      "within_10%": 29.155944415851774,
+      "R2_log": 0.6643092857112711
+    },
+    {
+      "stage": "1. Structure only (beds, baths, sqft, lot, year, type)",
+      "MAE_$": 121731.75716022617,
+      "MdAE_$": 47682.827877322445,
+      "MdAPE_%": 12.955581196142079,
+      "within_10%": 40.7771487390633,
+      "R2_log": 0.7969745016866511
+    },
+    {
+      "stage": "2. + Raw location (lat/lon, ZIP)",
+      "MAE_$": 81094.58774506672,
+      "MdAE_$": 29718.193550534692,
+      "MdAPE_%": 7.90834757645273,
+      "within_10%": 58.76479670612454,
+      "R2_log": 0.9048834819646572
+    },
+    {
+      "stage": "3. + Distance to Houston job hubs",
+      "MAE_$": 79666.1074850049,
+      "MdAE_$": 28799.245390067663,
+      "MdAPE_%": 7.695177534088432,
+      "within_10%": 59.57282552753475,
+      "R2_log": 0.9086457853445042
+    },
+    {
+      "stage": "4. + Neighborhood comps (10 nearest listings)",
+      "MAE_$": 78715.90637461186,
+      "MdAE_$": 27877.523511081643,
+      "MdAPE_%": 7.4428297654293445,
+      "within_10%": 60.931549150797736,
+      "R2_log": 0.9102626393230525
+    },
+    {
+      "stage": "5. + ZIP income, value & rent trends (IRS, Zillow)",
+      "MAE_$": 79201.7937684067,
+      "MdAE_$": 27721.492398519913,
+      "MdAPE_%": 7.467067003316913,
+      "within_10%": 60.91096242923314,
+      "R2_log": 0.9096120998360558
+    },
+    {
+      "stage": "6. + Listing type (new build, builder, foreclosure)",
+      "MAE_$": 78656.45906118769,
+      "MdAE_$": 27730.866617768916,
+      "MdAPE_%": 7.38633126141294,
+      "within_10%": 60.96757591353577,
+      "R2_log": 0.9102911349274327
+    },
+    {
+      "stage": "7. Ensemble: LightGBM + CatBoost + XGBoost",
+      "MAE_$": 75472.90712377832,
+      "MdAE_$": 26339.905865671957,
+      "MdAPE_%": 7.118109010026771,
+      "within_10%": 62.56304683479156,
+      "R2_log": 0.9171955419547199
+    }
+  ],
+  "ensemble": {
+    "members": [
+      "LightGBM",
+      "CatBoost",
+      "XGBoost"
+    ],
+    "weights": {
+      "LightGBM": 0.1365781366325515,
+      "CatBoost": 0.6359515071719981,
+      "XGBoost": 0.2274703561954503
+    },
+    "member_metrics": {
+      "LightGBM": {
+        "MAE_$": 78656.45906118769,
+        "MdAE_$": 27730.866617768916,
+        "MdAPE_%": 7.38633126141294,
+        "within_10%": 60.96757591353577,
+        "R2_log": 0.9102911349274327
+      },
+      "CatBoost": {
+        "MAE_$": 76347.89746995068,
+        "MdAE_$": 26864.366345383358,
+        "MdAPE_%": 7.225140263166391,
+        "within_10%": 61.99176531137416,
+        "R2_log": 0.9164309112228103
+      },
+      "XGBoost": {
+        "MAE_$": 78270.89331061019,
+        "MdAE_$": 26955.11140637123,
+        "MdAPE_%": 7.246052256342833,
+        "within_10%": 61.590324240864646,
+        "R2_log": 0.9084497711540173
+      }
+    }
+  },
+  "unseen_zip": {
+    "MAE_$": 110032.56607643249,
+    "MdAE_$": 45846.20153646395,
+    "MdAPE_%": 12.170300980377663,
+    "within_10%": 42.58363355635615,
+    "R2_log": 0.844387961311069
+  },
+  "interval": {
+    "nominal_coverage_%": 80.0,
+    "holdout_coverage_%": 80.78419328419328,
+    "median_width_%": 37.362754376434225,
+    "bands_holdout": [
+      {
+        "band": 1,
+        "fair_value_from": 0.0,
+        "below_%": 10.816542948038176,
+        "above_%": 9.650053022269352
+      },
+      {
+        "band": 2,
+        "fair_value_from": 227393.2560266052,
+        "below_%": 9.730848861283643,
+        "above_%": 9.316770186335404
+      },
+      {
+        "band": 3,
+        "fair_value_from": 272266.46008374897,
+        "below_%": 10.157068062827225,
+        "above_%": 9.738219895287958
+      },
+      {
+        "band": 4,
+        "fair_value_from": 310959.45771805523,
+        "below_%": 8.700102354145343,
+        "above_%": 9.825997952917092
+      },
+      {
+        "band": 5,
+        "fair_value_from": 347017.07973669877,
+        "below_%": 11.812627291242363,
+        "above_%": 9.674134419551935
+      },
+      {
+        "band": 6,
+        "fair_value_from": 383967.6768961385,
+        "below_%": 9.504950495049505,
+        "above_%": 8.712871287128712
+      },
+      {
+        "band": 7,
+        "fair_value_from": 431675.11592000513,
+        "below_%": 7.845188284518828,
+        "above_%": 8.891213389121338
+      },
+      {
+        "band": 8,
+        "fair_value_from": 493020.4443645937,
+        "below_%": 6.607495069033531,
+        "above_%": 11.538461538461538
+      },
+      {
+        "band": 9,
+        "fair_value_from": 589788.6731275417,
+        "below_%": 11.557788944723619,
+        "above_%": 9.246231155778894
+      },
+      {
+        "band": 10,
+        "fair_value_from": 834512.2040246811,
+        "below_%": 9.381443298969073,
+        "above_%": 9.484536082474227
+      }
+    ]
+  },
+  "benchmark_zestimate": {
+    "n": 18099,
+    "zestimate": {
+      "MAE_$": 21949.13166473286,
+      "MdAE_$": 12499.999999999825,
+      "MdAPE_%": 3.4734730170310897,
+      "within_10%": 98.6960605558318,
+      "R2_log": 0.9918576085920378
+    },
+    "our_model_same_rows": {
+      "MAE_$": 71043.16853836861,
+      "MdAE_$": 26312.513839294086,
+      "MdAPE_%": 7.108634836812071,
+      "within_10%": 62.78799933697994,
+      "R2_log": 0.9231930272778563
+    }
+  },
+  "benchmark_taxAssessedValue": {
+    "n": 14273,
+    "taxAssessedValue": {
+      "MAE_$": 144678.34813984446,
+      "MdAE_$": 45117.99999999977,
+      "MdAPE_%": 12.6557777777776,
+      "within_10%": 41.24570868072585,
+      "R2_log": 0.09635490367057487
+    },
+    "our_model_same_rows": {
+      "MAE_$": 83243.70791646607,
+      "MdAE_$": 29816.843539132504,
+      "MdAPE_%": 8.206008430045276,
+      "within_10%": 57.45113150704127,
+      "R2_log": 0.9194220350982102
+    }
+  },
+  "flags": {
+    "Fair": 15550,
+    "Overpriced": 1940,
+    "Underpriced": 1940
+  },
+  "shap_importance": {
+    "livingArea": 0.2172,
+    "lot_sqft": 0.0796,
+    "yearBuilt": 0.0691,
+    "knn_log_ppsf": 0.0639,
+    "homeType": 0.0615,
+    "knn_log_price": 0.0582,
+    "bathrooms": 0.0338,
+    "zipcode": 0.0265,
+    "sqft_per_bed": 0.0231,
+    "dist_galleria_mi": 0.0222,
+    "zip_avg_agi": 0.0221,
+    "zip_zhvi": 0.017,
+    "dist_downtown_mi": 0.0124,
+    "zip_zhvi_5y_growth": 0.0122,
+    "dist_energy_corridor_mi": 0.0121,
+    "is_new_construction": 0.012,
+    "bed_bath_ratio": 0.0085,
+    "knn_dist_mi": 0.0071,
+    "latitude": 0.0063,
+    "zip_zhvi_1y_growth": 0.0061,
+    "has_builder": 0.0059,
+    "bedrooms": 0.0058,
+    "longitude": 0.0045,
+    "dist_tmc_mi": 0.0043,
+    "zip_zori": 0.0031,
+    "dist_uh_mi": 0.0028,
+    "zip_tax_returns": 0.0024,
+    "is_bank_owned": 0.0011,
+    "is_premier_builder": 0.0008,
+    "is_auction": 0.0
+  }
+}
